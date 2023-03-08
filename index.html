@@ -49,19 +49,19 @@
     document.body.appendChild(renderer.domElement);
 
     const mtlLoader = new MTLLoader();
-    mtlLoader.load('/room/room.mtl', function (materials) {
+    mtlLoader.load('./room/room.mtl', function (materials) {
       materials.preload();
 
       // Create an OBJ loader and set the materials
 
       const loader = new OBJLoader();
       loader.setMaterials(materials);
-      loader.load('/room/room.obj', function (object) {
+      loader.load('./room/room.obj', function (object) {
         scene.add(object);
 
         gLTFloader.load(
           // URL of the VRM you want to load
-          '/model/gosung.vrm',
+          './model/gosung.vrm',
 
           // called when the resource is loaded
           (gltf) => {
@@ -78,7 +78,7 @@
 
             currentVrm = vrm;
 
-            loadFBX('/motion/DancingTwerk.fbx');
+            loadFBX('./motion/DancingTwerk.fbx');
 
             scene.add(vrm.scene);
 
