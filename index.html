@@ -1,0 +1,183 @@
+<html>
+
+<head>
+  <title>Load .rar file in Three.js</title>
+</head>
+
+<body>
+  <script async="" src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+  <script type="importmap">
+			{
+				"imports": {
+					"three": "https://unpkg.com/three@0.148.0/build/three.module.js",
+					"three/addons/": "https://unpkg.com/three@0.148.0/examples/jsm/",
+          "@pixiv/three-vrm": "/lib/three-vrm.module.js"
+				}
+			}
+		
+    </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+    import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+
+    import { loadMixamoAnimation } from './loadMixamoAnimation.js';
+
+
+    let currentVrm;
+    let currentMixer;
+    let currentAnimationUrl;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+
+    const gLTFloader = new GLTFLoader();
+
+    // Install GLTFLoader plugin
+    gLTFloader.register((parser) => {
+      return new VRMLoaderPlugin(parser);
+    });
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const mtlLoader = new MTLLoader();
+    mtlLoader.load('/room/room.mtl', function (materials) {
+      materials.preload();
+
+      // Create an OBJ loader and set the materials
+
+      const loader = new OBJLoader();
+      loader.setMaterials(materials);
+      loader.load('/room/room.obj', function (object) {
+        scene.add(object);
+
+        gLTFloader.load(
+          // URL of the VRM you want to load
+          '/model/gosung.vrm',
+
+          // called when the resource is loaded
+          (gltf) => {
+            // retrieve a VRM instance from gltf
+            const vrm = gltf.userData.vrm;
+
+            vrm.scene.scale.set(2, 2, 2);
+            // add the loaded vrm to the scene
+
+            vrm.scene.position.set(-2, 0, 1);
+            vrm.scene.traverse((obj) => {
+              obj.frustumCulled = false;
+            });
+
+            currentVrm = vrm;
+
+            loadFBX('/motion/DancingTwerk.fbx');
+
+            scene.add(vrm.scene);
+
+            // prepareAnimation(vrm);
+          },
+
+          // called while loading is progressing
+          (progress) => console.log('Loading model...', 100.0 * (progress.loaded / progress.total), '%'),
+
+          // called when loading has errors
+          (error) => {
+            console.error(error)
+          },
+        );
+      });
+
+
+    });
+
+    const params = {
+
+      timeScale: 1.0,
+
+    };
+
+    // mixamo animation
+    function loadFBX(animationUrl) {
+
+      currentAnimationUrl = animationUrl;
+
+      // create AnimationMixer for VRM
+      currentMixer = new THREE.AnimationMixer(currentVrm.scene);
+
+      // Load animation
+      loadMixamoAnimation(animationUrl, currentVrm).then((clip) => {
+
+        // Apply the loaded animation to mixer and play
+        currentMixer.clipAction(clip).play();
+        currentMixer.timeScale = params.timeScale;
+
+      });
+
+    }
+
+
+    // const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xc22eff, 1);
+    // const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+
+    directionalLight.position.set(5, 7, 4);
+    scene.add(directionalLight);
+
+    // const light = new THREE.SpotLight(0x0000ff, 1); // blue color, intensity of 2
+    // light.position.set(5, 7, 4); // set position
+    // scene.add(light)
+
+    // see options here: https://threejs.org/docs/#api/en/cameras/PerspectiveCamera
+    camera.position.set(5, 7, 4);
+
+    // Disable controls when mouse is over canvas
+    renderer.domElement.addEventListener('mouseenter', () => {
+      controls.enabled = true;
+    });
+
+    renderer.domElement.addEventListener('mouseleave', () => {
+      controls.enabled = false;
+    });
+
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+
+      const deltaTime = clock.getDelta();
+
+      if (currentVrm) {
+
+        currentVrm.update(deltaTime);
+
+      }
+
+      if (currentMixer) {
+        currentMixer.update(deltaTime);
+      }
+
+      // Update the controls
+      controls.update();
+
+      // Render the scene
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+
+</body>
+
+</html>
